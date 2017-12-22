@@ -44,7 +44,7 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 }
 
 func HomePage(res http.ResponseWriter, req *http.Request) {
-	t, err := template.ParseFiles("I:\\ubuntu14.04\\share\\docker\\go\\www\\src\\github.com\\kong36088\\danmu\\server\\client\\index.html")
+	t, err := template.ParseFiles("I:\\ubuntu14.04\\share\\docker\\go\\www\\src\\github.com\\kong36088\\danmu\\server\\client\\index.htmlgit ")
 	if err != nil {
 		fmt.Println(err)
 		return
