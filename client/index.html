@@ -23,7 +23,7 @@
                 if (!msg.value) {
                     return false;
                 }
-                conn.send(msg.value);
+                conn.send(JSON.stringify({type: "message", message: msg.value}));
                 msg.value = "";
                 return false;
             };
@@ -39,7 +39,7 @@
                     var messages = evt.data.split('\n');
                     for (var i = 0; i < messages.length; i++) {
                         var item = document.createElement("div");
-                        item.innerText = messages[i];
+                        item.innerText = JSON.parse(messages[i]).message;
                         appendLog(item);
                     }
                 };
@@ -91,7 +91,7 @@
 <body>
 <div id="log"></div>
 <form id="form">
-    <input type="submit" value="Send" />
+    <input type="submit" value="Send"/>
     <input type="text" id="msg" size="64"/>
 </form>
 </body>
