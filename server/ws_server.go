@@ -11,16 +11,16 @@ import (
 
 //TODO 心跳检测 断开检测
 //TODO kafka
-var clients = make(map[*websocket.Conn]bool) // connected clients
-var broadcast = make(chan Message)           // broadcast channel
+var clients = make(map[*Client]bool) // connected clients
+var broadcast = make(chan Message)   // broadcast channel
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	}, // 解决域不一致的问题
-}                                            // 将http升级为websocket
-var rwLock sync.RWMutex                      // 读写锁
+}                                    // 将http升级为websocket
+var rwLock sync.RWMutex              // 读写锁
 
 func onConnect(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -28,18 +28,23 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
+	client := &Client{conn}
 	rwLock.Lock()
-	clients[conn] = true
+	clients[client] = true
 	rwLock.Unlock()
-	go listenMessage(conn)
+	go listenMessage(client)
 }
 
-func listenMessage(conn *websocket.Conn) {
+func listenMessage(client *Client) {
+	defer onClose(client)
 	for {
 		var msgs Message
-		_, message, err := conn.ReadMessage()
+		_, message, err := client.conn.ReadMessage()
 		if err != nil {
-			log.Println(err)
+			client.conn.Close()
+			rwLock.Lock()
+			delete(clients, client)
+			rwLock.Unlock()
 			return
 		}
 		err = json.Unmarshal([]byte(message), &msgs)
@@ -55,12 +60,16 @@ func messagePusher() {
 	for {
 		msg := <-broadcast
 		rwLock.RLock()
-		for conn, _ := range clients {
+		for client, _ := range clients {
 			//TODO messageType
-			conn.WriteMessage(1, []byte(msg.JsonEncode()))
+			client.conn.WriteMessage(1, []byte(msg.JsonEncode()))
 		}
 		rwLock.RUnlock()
 	}
+}
+
+func onClose(client *Client){
+	client.conn.Close()
 }
 
 func StartServer() {
