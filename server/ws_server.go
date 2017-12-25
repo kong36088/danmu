@@ -9,7 +9,6 @@ import (
 	"sync"
 )
 
-//TODO 心跳检测 断开检测
 //TODO kafka
 var clients = make(map[*Client]bool) // connected clients
 var broadcast = make(chan Message)   // broadcast channel
@@ -35,24 +34,35 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	go listenMessage(client)
 }
 
+//TODO ping pong
 func listenMessage(client *Client) {
 	defer onClose(client)
 	for {
 		var msgs Message
-		_, message, err := client.conn.ReadMessage()
-		if err != nil {
-			client.conn.Close()
-			rwLock.Lock()
-			delete(clients, client)
-			rwLock.Unlock()
-			return
-		}
-		err = json.Unmarshal([]byte(message), &msgs)
+		messageType, message, err := client.conn.ReadMessage()
+		fmt.Println(message, messageType)
 		if err != nil {
 			log.Println(err)
+			log.Println(clients)
+			//if check := websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived); check {
+			return
+			//}
 		}
-		fmt.Println(msgs)
-		broadcast <- msgs
+		switch messageType {
+		case websocket.TextMessage:
+			err = json.Unmarshal([]byte(message), &msgs)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+			fmt.Println(msgs)
+			broadcast <- msgs
+		case websocket.CloseMessage:
+			return
+		default:
+			continue
+		}
+
 	}
 }
 
@@ -68,8 +78,11 @@ func messagePusher() {
 	}
 }
 
-func onClose(client *Client){
+func onClose(client *Client) {
 	client.conn.Close()
+	rwLock.Lock()
+	delete(clients, client)
+	rwLock.Unlock()
 }
 
 func StartServer() {
