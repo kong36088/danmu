@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"encoding/json"
 	"sync"
+	"time"
 )
 
 //TODO kafka
@@ -34,16 +35,15 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	go listenMessage(client)
 }
 
-//TODO ping pong
 func listenMessage(client *Client) {
-	defer onClose(client)
+	defer Close(client)
+	keepAlive(client, 60*time.Second)
 	for {
 		var msgs Message
 		messageType, message, err := client.conn.ReadMessage()
 		fmt.Println(message, messageType)
 		if err != nil {
 			log.Println(err)
-			log.Println(clients)
 			//if check := websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived); check {
 			return
 			//}
@@ -66,6 +66,30 @@ func listenMessage(client *Client) {
 	}
 }
 
+func keepAlive(c *Client, timeout time.Duration) {
+	lastResponse := time.Now()
+	c.conn.SetPongHandler(func(msg string) error {
+		lastResponse = time.Now()
+
+		return nil
+	})
+
+	go func() {
+		for {
+			err := c.conn.WriteMessage(websocket.PingMessage, []byte("keepalive"))
+			if err != nil {
+				return
+			}
+			time.Sleep(timeout / 2)
+			if time.Now().Sub(lastResponse) > timeout {
+				log.Println("close client" , c)
+				Close(c)
+				return
+			}
+		}
+	}()
+}
+
 func messagePusher() {
 	for {
 		msg := <-broadcast
@@ -78,8 +102,8 @@ func messagePusher() {
 	}
 }
 
-func onClose(client *Client) {
-	client.conn.Close()
+func Close(client *Client) {
+	client.Close()
 	rwLock.Lock()
 	delete(clients, client)
 	rwLock.Unlock()

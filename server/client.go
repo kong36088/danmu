@@ -1,7 +1,13 @@
 package server
 
-import "github.com/gorilla/websocket"
+import (
+	"github.com/gorilla/websocket"
+)
 
-type Client struct{
+type Client struct {
 	conn *websocket.Conn
+}
+
+func (client *Client) Close() {
+	client.conn.Close()
 }
