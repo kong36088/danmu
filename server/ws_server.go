@@ -33,11 +33,11 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	clients[client] = true
 	rwLock.Unlock()
 	go listenMessage(client)
+	keepAlive(client, 60*time.Second)
 }
 
 func listenMessage(client *Client) {
 	defer Close(client)
-	keepAlive(client, 60*time.Second)
 	for {
 		var msgs Message
 		messageType, message, err := client.conn.ReadMessage()
@@ -95,7 +95,6 @@ func messagePusher() {
 		msg := <-broadcast
 		rwLock.RLock()
 		for client, _ := range clients {
-			//TODO messageType
 			client.conn.WriteMessage(1, []byte(msg.JsonEncode()))
 		}
 		rwLock.RUnlock()
