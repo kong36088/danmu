@@ -8,19 +8,23 @@ import (
 	"encoding/json"
 	"sync"
 	"time"
+	"strconv"
 )
 
 //TODO kafka
-var clients = make(map[*Client]bool) // connected clients
-var broadcast = make(chan Message)   // broadcast channel
-var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	}, // 解决域不一致的问题
-}                                    // 将http升级为websocket
-var rwLock sync.RWMutex              // 读写锁
+var
+(
+	clients   = make(map[*Client]bool) // connected clients
+	broadcast = make(chan Message)     // broadcast channel
+	rwLock    sync.RWMutex             // 读写锁
+	upgrader  = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		}, // 解决域不一致的问题
+	}                                  // 将http升级为websocket
+)
 
 func onConnect(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -33,7 +37,15 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	clients[client] = true
 	rwLock.Unlock()
 	go listenMessage(client)
-	keepAlive(client, 60*time.Second)
+
+	kali, err := strconv.Atoi(GetConfig("keepalive_timeout"))
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	if kali > 0 {
+		keepAlive(client, time.Duration(kali)*time.Second)
+	}
 }
 
 func listenMessage(client *Client) {
@@ -82,7 +94,7 @@ func keepAlive(c *Client, timeout time.Duration) {
 			}
 			time.Sleep(timeout / 2)
 			if time.Now().Sub(lastResponse) > timeout {
-				log.Println("close client" , c)
+				log.Println("close client", c)
 				Close(c)
 				return
 			}
@@ -114,7 +126,8 @@ func StartServer() {
 
 	go messagePusher()
 
-	err := http.ListenAndServe(":9500", nil)
+	addr := ":" + GetConfig("port")
+	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
