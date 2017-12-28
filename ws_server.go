@@ -1,4 +1,4 @@
-package server
+package danmu
 
 import (
 	"github.com/gorilla/websocket"
