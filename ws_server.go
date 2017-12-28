@@ -36,7 +36,7 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	rwLock.Lock()
 	clients[client] = true
 	rwLock.Unlock()
-	go listenMessage(client)
+	go onMessage(client)
 
 	kali, err := strconv.Atoi(GetConfig("keepalive_timeout"))
 	if err != nil {
@@ -48,8 +48,8 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func listenMessage(client *Client) {
-	defer Close(client)
+func onMessage(client *Client) {
+	defer onClose(client)
 	for {
 		var msgs Message
 		messageType, message, err := client.conn.ReadMessage()
@@ -94,8 +94,8 @@ func keepAlive(c *Client, timeout time.Duration) {
 			}
 			time.Sleep(timeout / 2)
 			if time.Now().Sub(lastResponse) > timeout {
-				log.Println("close client", c)
-				Close(c)
+				log.Println("Ping pong timeout, close client", c)
+				onClose(c)
 				return
 			}
 		}
@@ -113,7 +113,7 @@ func messagePusher() {
 	}
 }
 
-func Close(client *Client) {
+func onClose(client *Client) {
 	client.Close()
 	rwLock.Lock()
 	delete(clients, client)
