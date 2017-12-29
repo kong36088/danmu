@@ -38,7 +38,7 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	rwLock.Unlock()
 	go onMessage(client)
 
-	kali, err := strconv.Atoi(GetConfig("keepalive_timeout"))
+	kali, err := strconv.Atoi(GetConfig("sys", "keepalive_timeout"))
 	if err != nil {
 		log.Println(err)
 		return
@@ -126,7 +126,7 @@ func StartServer() {
 
 	go messagePusher()
 
-	addr := ":" + GetConfig("port")
+	addr := ":" + GetConfig("sys", "port")
 	err := http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.Fatal(err)

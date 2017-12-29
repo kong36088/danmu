@@ -12,14 +12,14 @@ var (
 )
 
 //topic list
-var CFG map[string]string
+var CFG map[string]map[string]string
 
-func ReadConfig() map[string]string {
+func ReadConfig() map[string]map[string]string {
 	if CFG != nil {
 		return CFG
 	}
 
-	CFG = make(map[string]string)
+	CFG = make(map[string]map[string]string)
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	flag.Parse()
@@ -35,27 +35,32 @@ func ReadConfig() map[string]string {
 			log.Printf("Read options of file %s section %s  failed, %s\n", *configFile, section, err)
 			continue
 		}
+		CFG[section] = make(map[string]string)
 		for _, v := range options {
 			option, err := cfg.String(section, v)
 			if err != nil {
 				log.Printf("Read file %s option %s failed, %s\n", *configFile, v, err)
 				continue
 			}
-			CFG[v] = option
+			CFG[section][v] = option
 		}
 	}
 
 	return CFG
 }
 
-func GetConfig(option string) string {
+func GetConfig(section, option string) string {
 	if CFG == nil {
 		ReadConfig()
 	}
-	return CFG[option]
+	return CFG[section][option]
 }
 
-func GetAllConfig() map[string]string {
+func GetSectionConfig(section string) map[string]string{
+	return CFG[section]
+}
+
+func GetAllConfig() map[string]map[string]string {
 	if CFG == nil {
 		ReadConfig()
 	}
