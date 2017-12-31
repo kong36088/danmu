@@ -1,7 +1,9 @@
 package main
 
-import "github.com/kong36088/danmu"
+import (
+	"github.com/kong36088/danmu"
+)
 
-func main(){
+func main() {
 	danmu.StartServer()
 }

@@ -8,6 +8,7 @@ import (
 type Message struct {
 	Type    string `json:"type"`
 	Message string `json:"message"`
+	RoomId  int    `json:"room_id"`
 }
 
 func (msg Message) String() string {

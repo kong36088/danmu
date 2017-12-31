@@ -12,6 +12,8 @@ import (
 )
 
 //TODO kafka
+const ROOMID_FILED = "room"
+
 var
 (
 	clients   = make(map[*Client]bool) // connected clients
@@ -85,7 +87,6 @@ func keepAlive(c *Client, timeout time.Duration) {
 
 		return nil
 	})
-
 	go func() {
 		for {
 			err := c.conn.WriteMessage(websocket.PingMessage, []byte("keepalive"))
@@ -121,7 +122,9 @@ func onClose(client *Client) {
 }
 
 func StartServer() {
-	http.HandleFunc("/", StaticHandler)
+	InitRoomBucket()
+
+	// http.HandleFunc("/", StaticHandler)
 	http.HandleFunc("/ws", onConnect)
 
 	go messagePusher()
