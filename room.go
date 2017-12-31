@@ -2,9 +2,9 @@ package danmu
 
 import (
 	"fmt"
-	"sync"
-	"strconv"
 	"log"
+	"strconv"
+	"sync"
 )
 
 const (
@@ -26,8 +26,24 @@ var (
 
 type Room struct {
 	RoomId  rid
-	Clients []Client
+	Clients map[*Client]*Client
 	lck     sync.RWMutex
+}
+
+func (room *Room) AddClient(client *Client) error {
+	room.lck.Lock()
+	room.Clients[client] = client
+	room.lck.Unlock()
+
+	return nil
+}
+
+func (room *Room) GetClients() map[*Client]*Client{
+	room.lck.RLock()
+	m := room.Clients
+	room.lck.RUnlock()
+
+	return m
 }
 
 func (room Room) String() string {
@@ -36,16 +52,18 @@ func (room Room) String() string {
 
 type RoomBucket struct {
 	Rooms map[rid]*Room
+	lck   sync.RWMutex
 }
 
 func InitRoomBucket() {
 	roomBucket = &RoomBucket{
 		Rooms: make(map[rid]*Room),
+		lck:   sync.RWMutex{},
 	}
-	for v := range roomList {
+	for _, v := range roomList {
 		r := &Room{
 			RoomId:  rid(v),
-			Clients: make([]Client, roomMapCup),
+			Clients: make(map[*Client]*Client, roomMapCup),
 			lck:     sync.RWMutex{},
 		}
 		err := roomBucket.AddRoom(r)
@@ -55,24 +73,26 @@ func InitRoomBucket() {
 	}
 }
 
+func (rb *RoomBucket) Get(id rid) (*Room, error) {
+	if v, ok := rb.Rooms[id]; ok {
+		return v, nil
+	}else{
+		return nil, ErrRoomDoesNotExist
+	}
+
+}
+
 func (rb *RoomBucket) AddRoom(room *Room) error {
+	rb.lck.Lock()
 	rb.Rooms[room.RoomId] = room
+	rb.lck.Unlock()
 	return OK
 }
 
 func (rb *RoomBucket) RemoveRoom(room *Room) error {
-	if _, ok := rb.Rooms[room.RoomId]; ok {
-		return RoomDoesNotExist
+	if _, ok := rb.Rooms[room.RoomId]; !ok {
+		return ErrRoomDoesNotExist
 	}
 	delete(rb.Rooms, room.RoomId)
 	return OK
-}
-
-func (rb RoomBucket) String() string {
-	rt := "rooms:"
-	for _, v := range rb.Rooms {
-		rt += v.RoomId.String()
-	}
-	rt += "\n"
-	return rt
 }

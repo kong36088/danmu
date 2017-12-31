@@ -4,6 +4,9 @@ import "errors"
 
 var (
 	OK error = nil
+	//sys
+	ErrParamError = errors.New("incorrect param")
+
 	//room
-	RoomDoesNotExist = errors.New("room does not exist")
+	ErrRoomDoesNotExist = errors.New("room does not exist")
 )

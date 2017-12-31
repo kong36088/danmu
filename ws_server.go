@@ -1,14 +1,13 @@
 package danmu
 
 import (
-	"github.com/gorilla/websocket"
-	"net/http"
-	"log"
 	"fmt"
-	"encoding/json"
+	"github.com/gorilla/websocket"
+	"log"
+	"net/http"
+	"strconv"
 	"sync"
 	"time"
-	"strconv"
 )
 
 //TODO kafka
@@ -17,7 +16,7 @@ const ROOMID_FILED = "room"
 var
 (
 	clients   = make(map[*Client]bool) // connected clients
-	broadcast = make(chan Message)     // broadcast channel
+	broadcast = make(chan Proto)       // broadcast channel
 	rwLock    sync.RWMutex             // 读写锁
 	upgrader  = websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -34,10 +33,32 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{conn}
-	rwLock.Lock()
-	clients[client] = true
-	rwLock.Unlock()
+	client := &Client{Conn: conn}
+	roomId := r.FormValue(ROOMID_FILED)
+	if roomId == "" {
+		client.WriteErrorMsg("incorrect roomId.")
+		client.Close()
+		return
+	}
+	roomIdi, err := strconv.Atoi(roomId)
+	if err != nil {
+		fmt.Println(1)
+		client.WriteErrorMsg("incorrect roomId.")
+		client.Close()
+		log.Println(err)
+		return
+	}
+	room, err := roomBucket.Get(rid(roomIdi))
+	if err != nil {
+		fmt.Println(2)
+		client.WriteErrorMsg("incorrect roomId.")
+		client.Close()
+		log.Println(err)
+		return
+	}
+	room.AddClient(client)
+
+	//send
 	go onMessage(client)
 
 	kali, err := strconv.Atoi(GetConfig("sys", "keepalive_timeout"))
@@ -53,43 +74,29 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 func onMessage(client *Client) {
 	defer onClose(client)
 	for {
-		var msgs Message
-		messageType, message, err := client.conn.ReadMessage()
-		fmt.Println(message, messageType)
+		msgs := Proto{}
+		err := client.Conn.ReadJSON(&msgs)
 		if err != nil {
 			log.Println(err)
 			//if check := websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived); check {
 			return
 			//}
 		}
-		switch messageType {
-		case websocket.TextMessage:
-			err = json.Unmarshal([]byte(message), &msgs)
-			if err != nil {
-				log.Println(err)
-				continue
-			}
-			fmt.Println(msgs)
-			broadcast <- msgs
-		case websocket.CloseMessage:
-			return
-		default:
-			continue
-		}
-
+		fmt.Println(msgs)
+		broadcast <- msgs
 	}
 }
 
 func keepAlive(c *Client, timeout time.Duration) {
 	lastResponse := time.Now()
-	c.conn.SetPongHandler(func(msg string) error {
+	c.Conn.SetPongHandler(func(msg string) error {
 		lastResponse = time.Now()
 
 		return nil
 	})
 	go func() {
 		for {
-			err := c.conn.WriteMessage(websocket.PingMessage, []byte("keepalive"))
+			err := c.Conn.WriteMessage(websocket.PingMessage, []byte("keepalive"))
 			if err != nil {
 				return
 			}
@@ -106,14 +113,19 @@ func keepAlive(c *Client, timeout time.Duration) {
 func messagePusher() {
 	for {
 		msg := <-broadcast
-		rwLock.RLock()
-		for client, _ := range clients {
-			client.conn.WriteMessage(1, []byte(msg.JsonEncode()))
+		roomId := msg.RoomId
+		room, err := roomBucket.Get(rid(roomId))
+		if err != nil {
+			log.Println(err)
+			continue
 		}
-		rwLock.RUnlock()
+		for client, _ := range room.GetClients() {
+			client.Write(msg)
+		}
 	}
 }
 
+//TODO 支持CloseHandler
 func onClose(client *Client) {
 	client.Close()
 	rwLock.Lock()

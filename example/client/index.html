@@ -23,7 +23,7 @@
                 if (!msg.value) {
                     return false;
                 }
-                conn.send(JSON.stringify({type: "message", message: msg.value, room_id: 1}));
+                conn.send(JSON.stringify({op: "message", message: msg.value, room_id: 1}));
                 msg.value = "";
                 return false;
             };
@@ -38,9 +38,11 @@
                 conn.onmessage = function (evt) {
                     var messages = evt.data.split('\n');
                     for (var i = 0; i < messages.length; i++) {
-                        var item = document.createElement("div");
-                        item.innerText = JSON.parse(messages[i]).message;
-                        appendLog(item);
+                        if (messages[i] != "") {
+                            var item = document.createElement("div");
+                            item.innerText = JSON.parse(messages[i]).message;
+                            appendLog(item);
+                        }
                     }
                 };
             } else {

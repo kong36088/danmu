@@ -5,18 +5,23 @@ import (
 	"log"
 )
 
-type Message struct {
-	Type    string `json:"type"`
+const (
+	OPErr = "error"
+	OPMsg = "message"
+)
+
+type Proto struct {
+	OP    string `json:"op"`
 	Message string `json:"message"`
-	RoomId  int    `json:"room_id"`
+	RoomId  rid    `json:"room_id"`
 }
 
-func (msg Message) String() string {
-	return msg.JsonEncode()
+func (p Proto) String() string {
+	return p.JsonEncode()
 }
 
-func (msg *Message) JsonEncode() string {
-	j, err := json.Marshal(msg)
+func (p *Proto) JsonEncode() string {
+	j, err := json.Marshal(p)
 	if err != nil {
 		log.Println(err)
 		return ""
