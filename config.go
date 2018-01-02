@@ -2,9 +2,13 @@ package danmu
 
 import (
 	"flag"
-	"runtime"
 	"github.com/larspensjo/config"
 	"log"
+	"runtime"
+)
+
+const (
+	ROOMID_FILED = "room"
 )
 
 var (
@@ -56,7 +60,7 @@ func GetConfig(section, option string) string {
 	return CFG[section][option]
 }
 
-func GetSectionConfig(section string) map[string]string{
+func GetSectionConfig(section string) map[string]string {
 	return CFG[section]
 }
 

@@ -66,7 +66,7 @@ func InitRoomBucket() {
 			Clients: make(map[*Client]*Client, roomMapCup),
 			lck:     sync.RWMutex{},
 		}
-		err := roomBucket.AddRoom(r)
+		err := roomBucket.Add(r)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -82,14 +82,14 @@ func (rb *RoomBucket) Get(id rid) (*Room, error) {
 
 }
 
-func (rb *RoomBucket) AddRoom(room *Room) error {
+func (rb *RoomBucket) Add(room *Room) error {
 	rb.lck.Lock()
 	rb.Rooms[room.RoomId] = room
 	rb.lck.Unlock()
 	return OK
 }
 
-func (rb *RoomBucket) RemoveRoom(room *Room) error {
+func (rb *RoomBucket) Remove(room *Room) error {
 	if _, ok := rb.Rooms[room.RoomId]; !ok {
 		return ErrRoomDoesNotExist
 	}

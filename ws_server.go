@@ -11,7 +11,6 @@ import (
 )
 
 //TODO kafka
-const ROOMID_FILED = "room"
 
 var
 (
@@ -135,6 +134,7 @@ func onClose(client *Client) {
 
 func StartServer() {
 	InitRoomBucket()
+	InitClientBucket()
 
 	// http.HandleFunc("/", StaticHandler)
 	http.HandleFunc("/ws", onConnect)
