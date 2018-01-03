@@ -55,15 +55,16 @@ func (client *Client) Write(proto Proto) error {
 	return err
 }
 
-func (client *Client) Close() {
-	client.Conn.Close()
+func (client *Client) Close() error{
+	return client.Conn.Close()
 }
 
-func (client *Client) ErrorReport(err error, msg string) {
+func (client *Client) ErrorReport(err error, msg string) error {
 	log.Println(err)
 	if msg != "" {
-		client.WriteErrorMsg(msg)
+		return client.WriteErrorMsg(msg)
 	}
+	return OK
 }
 
 func (client *Client) CloseHandler() func(code int, text string) {
@@ -82,18 +83,19 @@ type ClientBucket struct {
 	lck     sync.RWMutex
 }
 
-func InitClientBucket() {
+func InitClientBucket() error{
 	clientBucket = &ClientBucket{
 		Clients: make(map[*websocket.Conn]*Client),
 		lck:     sync.RWMutex{},
 	}
+	return OK
 }
 
 func (cb *ClientBucket) Get(conn *websocket.Conn) (*Client, error) {
 	cb.lck.RLock()
 	defer cb.lck.RUnlock()
 	if v, ok := cb.Clients[conn]; ok {
-		return v, nil
+		return v, OK
 	} else {
 		return nil, ErrRoomDoesNotExist
 	}

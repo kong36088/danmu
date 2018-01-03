@@ -63,7 +63,7 @@ type RoomBucket struct {
 	lck   sync.RWMutex
 }
 
-func InitRoomBucket() {
+func InitRoomBucket() error{
 	roomBucket = &RoomBucket{
 		Rooms: make(map[rid]*Room, roomMapCup),
 		lck:   sync.RWMutex{},
@@ -75,6 +75,7 @@ func InitRoomBucket() {
 			log.Fatal(err)
 		}
 	}
+	return OK
 }
 
 func (rb *RoomBucket) Get(id rid) (*Room, error) {
