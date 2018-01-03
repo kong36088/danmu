@@ -6,24 +6,25 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"sync"
 	"time"
 )
 
-//TODO kafka
+const (
+	writeWait   = time.Second
+	roomIdFiled = "room"
+)
 
+//TODO kafka
 var
 (
-	clients   = make(map[*Client]bool) // connected clients
-	broadcast = make(chan Proto)       // broadcast channel
-	rwLock    sync.RWMutex             // 读写锁
+	broadcast = make(chan Proto) // broadcast channel
 	upgrader  = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
 			return true
 		}, // 解决域不一致的问题
-	}                                  // 将http升级为websocket
+	}                            // 将http升级为websocket
 )
 
 func onConnect(w http.ResponseWriter, r *http.Request) {
@@ -32,30 +33,26 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
-	client := &Client{Conn: conn}
-	roomId := r.FormValue(ROOMID_FILED)
-	if roomId == "" {
-		client.WriteErrorMsg("incorrect roomId.")
-		client.Close()
-		return
-	}
+	client := NewClient(0, conn)
+	roomId := r.FormValue(roomIdFiled)
 	roomIdi, err := strconv.Atoi(roomId)
 	if err != nil {
-		fmt.Println(1)
 		client.WriteErrorMsg("incorrect roomId.")
-		client.Close()
-		log.Println(err)
+		cleaner.CleanClient(client)
+		log.Printf("Parse roomid failed, roomid: %s, err: %s\n", roomId, err)
 		return
 	}
 	room, err := roomBucket.Get(rid(roomIdi))
 	if err != nil {
-		fmt.Println(2)
 		client.WriteErrorMsg("incorrect roomId.")
-		client.Close()
-		log.Println(err)
+		cleaner.CleanClient(client)
+		log.Printf("Get room failed, roomid: %s, err: %s\n", roomId, err)
 		return
 	}
+	client.RoomId = rid(roomIdi)
 	room.AddClient(client)
+
+	clientBucket.Add(client)
 
 	//send
 	go onMessage(client)
@@ -71,15 +68,17 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 }
 
 func onMessage(client *Client) {
-	defer onClose(client)
+	defer cleaner.CleanClient(client)
 	for {
 		msgs := Proto{}
 		err := client.Conn.ReadJSON(&msgs)
 		if err != nil {
-			log.Println(err)
-			//if check := websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived); check {
-			return
-			//}
+			if websocket.IsCloseError(err,websocket.CloseGoingAway, websocket.CloseNoStatusReceived){
+				return
+			}else{
+				log.Println(err)
+				return
+			}
 		}
 		fmt.Println(msgs)
 		broadcast <- msgs
@@ -95,14 +94,14 @@ func keepAlive(c *Client, timeout time.Duration) {
 	})
 	go func() {
 		for {
-			err := c.Conn.WriteMessage(websocket.PingMessage, []byte("keepalive"))
+			err := c.WriteControl(websocket.PingMessage, []byte("keepalive"), time.Now().Add(writeWait))
 			if err != nil {
 				return
 			}
 			time.Sleep(timeout / 2)
 			if time.Now().Sub(lastResponse) > timeout {
 				log.Println("Ping pong timeout, close client", c)
-				onClose(c)
+				cleaner.CleanClient(c)
 				return
 			}
 		}
@@ -111,30 +110,25 @@ func keepAlive(c *Client, timeout time.Duration) {
 
 func messagePusher() {
 	for {
-		msg := <-broadcast
-		roomId := msg.RoomId
+		proto := <-broadcast
+		roomId := proto.RoomId
 		room, err := roomBucket.Get(rid(roomId))
 		if err != nil {
 			log.Println(err)
 			continue
 		}
-		for client, _ := range room.GetClients() {
-			client.Write(msg)
+		for _, client := range room.GetClients() {
+			client.Write(proto)
 		}
 	}
 }
 
 //TODO 支持CloseHandler
-func onClose(client *Client) {
-	client.Close()
-	rwLock.Lock()
-	delete(clients, client)
-	rwLock.Unlock()
-}
 
 func StartServer() {
 	InitRoomBucket()
 	InitClientBucket()
+	InitCleaner()
 
 	// http.HandleFunc("/", StaticHandler)
 	http.HandleFunc("/ws", onConnect)

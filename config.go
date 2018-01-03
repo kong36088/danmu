@@ -7,10 +7,6 @@ import (
 	"runtime"
 )
 
-const (
-	ROOMID_FILED = "room"
-)
-
 var (
 	configFile = flag.String("config", "config/config.ini", "General configuration file")
 )

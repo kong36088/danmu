@@ -2,6 +2,7 @@ package danmu
 
 import (
 	"fmt"
+	"github.com/gorilla/websocket"
 	"log"
 	"strconv"
 	"sync"
@@ -26,19 +27,26 @@ var (
 
 type Room struct {
 	RoomId  rid
-	Clients map[*Client]*Client
+	Clients map[*websocket.Conn]*Client
 	lck     sync.RWMutex
+}
+
+func NewRoom(roomId rid) *Room {
+	r := new(Room)
+	r.RoomId = roomId
+	r.Clients = make(map[*websocket.Conn]*Client)
+	return r
 }
 
 func (room *Room) AddClient(client *Client) error {
 	room.lck.Lock()
-	room.Clients[client] = client
+	room.Clients[client.Conn] = client
 	room.lck.Unlock()
 
 	return nil
 }
 
-func (room *Room) GetClients() map[*Client]*Client{
+func (room *Room) GetClients() map[*websocket.Conn]*Client {
 	room.lck.RLock()
 	m := room.Clients
 	room.lck.RUnlock()
@@ -57,15 +65,11 @@ type RoomBucket struct {
 
 func InitRoomBucket() {
 	roomBucket = &RoomBucket{
-		Rooms: make(map[rid]*Room),
+		Rooms: make(map[rid]*Room, roomMapCup),
 		lck:   sync.RWMutex{},
 	}
 	for _, v := range roomList {
-		r := &Room{
-			RoomId:  rid(v),
-			Clients: make(map[*Client]*Client, roomMapCup),
-			lck:     sync.RWMutex{},
-		}
+		r := NewRoom(v)
 		err := roomBucket.Add(r)
 		if err != nil {
 			log.Fatal(err)
@@ -74,9 +78,11 @@ func InitRoomBucket() {
 }
 
 func (rb *RoomBucket) Get(id rid) (*Room, error) {
+	rb.lck.RLock()
+	defer rb.lck.RUnlock()
 	if v, ok := rb.Rooms[id]; ok {
 		return v, nil
-	}else{
+	} else {
 		return nil, ErrRoomDoesNotExist
 	}
 
@@ -93,6 +99,8 @@ func (rb *RoomBucket) Remove(room *Room) error {
 	if _, ok := rb.Rooms[room.RoomId]; !ok {
 		return ErrRoomDoesNotExist
 	}
+	rb.lck.Lock()
 	delete(rb.Rooms, room.RoomId)
+	rb.lck.Unlock()
 	return OK
 }
