@@ -15,6 +15,7 @@ const (
 )
 
 //TODO kafka
+//TODO log4go
 var
 (
 	broadcast = make(chan Proto) // broadcast channel
@@ -55,9 +56,9 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	clientBucket.Add(client)
 
 	//send
-	go onMessage(client)
+	go listen(client)
 
-	kali, err := strconv.Atoi(GetConfig("sys", "keepalive_timeout"))
+	kali, err := strconv.Atoi(Conf.GetConfig("sys", "keepalive_timeout"))
 	if err != nil {
 		log.Println(err)
 		return
@@ -67,15 +68,15 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func onMessage(client *Client) {
+func listen(client *Client) {
 	defer cleaner.CleanClient(client)
 	for {
 		msgs := Proto{}
 		err := client.Conn.ReadJSON(&msgs)
 		if err != nil {
-			if websocket.IsCloseError(err,websocket.CloseGoingAway, websocket.CloseNoStatusReceived){
+			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 				return
-			}else{
+			} else {
 				log.Println(err)
 				return
 			}
@@ -126,17 +127,32 @@ func messagePusher() {
 //TODO 支持CloseHandler
 
 func StartServer() {
-	InitRoomBucket()
-	InitClientBucket()
-	InitCleaner()
+	var (
+		err error
+	)
+	if err = InitConfig(); err != nil {
+		log.Fatal(err)
+	}
+
+	if err = InitRoomBucket(); err != nil {
+		log.Fatal(err)
+	}
+
+	if err = InitClientBucket(); err != nil {
+		log.Fatal(err)
+	}
+
+	if err = InitCleaner(); err != nil {
+		log.Fatal(err)
+	}
 
 	// http.HandleFunc("/", StaticHandler)
 	http.HandleFunc("/ws", onConnect)
 
 	go messagePusher()
 
-	addr := ":" + GetConfig("sys", "port")
-	err := http.ListenAndServe(addr, nil)
+	addr := ":" + Conf.GetConfig("sys", "port")
+	err = http.ListenAndServe(addr, nil)
 	if err != nil {
 		log.Fatal(err)
 	}

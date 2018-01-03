@@ -7,8 +7,10 @@ var (
 	cleaner *Cleaner
 )
 
-func InitCleaner() {
+func InitCleaner() error{
 	cleaner = new(Cleaner)
+
+	return OK
 }
 
 /**
@@ -26,3 +28,5 @@ func (cleaner *Cleaner) CleanClient(client *Client) {
 
 	client = nil //for gc
 }
+
+//TODO CleanRoom

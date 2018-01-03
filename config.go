@@ -8,61 +8,61 @@ import (
 )
 
 var (
-	configFile = flag.String("config", "config/config.ini", "General configuration file")
+	Conf       *Config
+	configFile  = flag.String("config", "config/config.ini", "General configuration file")
 )
+//TODO 使用goconf？
+
+type Config struct {
+	values map[string]map[string]string
+}
 
 //topic list
-var CFG map[string]map[string]string
 
-func ReadConfig() map[string]map[string]string {
-	if CFG != nil {
-		return CFG
+func NewConfig() *Config{
+	return &Config{
+		values: make(map[string]map[string]string),
 	}
+}
 
-	CFG = make(map[string]map[string]string)
+func InitConfig() error{
+	Conf = NewConfig()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	flag.Parse()
 
-	cfg, err := config.ReadDefault(*configFile)
+	cfgSecs, err := config.ReadDefault(*configFile)
 	if err != nil {
 		log.Fatalf("Fail to find %s %s", *configFile, err)
 	}
 
-	for _, section := range cfg.Sections() {
-		options, err := cfg.SectionOptions(section)
+	for _, section := range cfgSecs.Sections() {
+		options, err := cfgSecs.SectionOptions(section)
 		if err != nil {
 			log.Printf("Read options of file %s section %s  failed, %s\n", *configFile, section, err)
 			continue
 		}
-		CFG[section] = make(map[string]string)
+		Conf.values[section] = make(map[string]string)
 		for _, v := range options {
-			option, err := cfg.String(section, v)
+			option, err := cfgSecs.String(section, v)
 			if err != nil {
 				log.Printf("Read file %s option %s failed, %s\n", *configFile, v, err)
 				continue
 			}
-			CFG[section][v] = option
+			Conf.values[section][v] = option
 		}
 	}
-
-	return CFG
+	return nil
 }
 
-func GetConfig(section, option string) string {
-	if CFG == nil {
-		ReadConfig()
-	}
-	return CFG[section][option]
+func (c *Config) GetConfig(section, option string) string {
+	return c.values[section][option]
 }
 
-func GetSectionConfig(section string) map[string]string {
-	return CFG[section]
+func (c *Config) GetSectionConfig(section string) map[string]string {
+	return c.values[section]
 }
 
-func GetAllConfig() map[string]map[string]string {
-	if CFG == nil {
-		ReadConfig()
-	}
-	return CFG
+func (c *Config) GetAllConfig() map[string]map[string]string {
+	return c.values
 }
