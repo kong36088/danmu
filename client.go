@@ -28,6 +28,16 @@ func NewClient(roomId rid, conn *websocket.Conn) *Client {
 	return c
 }
 
+func (client *Client) ReadJSON(v interface{}) error {
+	err := client.Conn.ReadJSON(v)
+	return err
+}
+
+func (client *Client) Read(v interface{}) (int, []byte, error) {
+	msgType, msg, err := client.Conn.ReadMessage()
+	return msgType, msg, err
+}
+
 func (client *Client) WriteErrorMsg(msg string) error {
 	err := client.Conn.WriteJSON(Proto{
 		OP:      OPErr,
@@ -46,7 +56,7 @@ func (client *Client) WriteMessage(msg string, roomId rid) error {
 	return err
 }
 
-func (client *Client) WriteControl(messageType int, data []byte, deadline time.Time) error{
+func (client *Client) WriteControl(messageType int, data []byte, deadline time.Time) error {
 	return client.Conn.WriteControl(messageType, data, deadline)
 }
 
@@ -55,7 +65,7 @@ func (client *Client) Write(proto Proto) error {
 	return err
 }
 
-func (client *Client) Close() error{
+func (client *Client) Close() error {
 	return client.Conn.Close()
 }
 
@@ -83,7 +93,7 @@ type ClientBucket struct {
 	lck     sync.RWMutex
 }
 
-func InitClientBucket() error{
+func InitClientBucket() error {
 	clientBucket = &ClientBucket{
 		Clients: make(map[*websocket.Conn]*Client),
 		lck:     sync.RWMutex{},

@@ -2,10 +2,12 @@ package danmu
 
 import (
 	"fmt"
+	"github.com/Shopify/sarama"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -45,9 +47,9 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	}
 	room, err := roomBucket.Get(rid(roomIdi))
 	if err != nil {
-		client.WriteErrorMsg("incorrect roomId.")
+		client.WriteErrorMsg("Room does not exist.")
 		cleaner.CleanClient(client)
-		log.Printf("Get room failed, roomid: %s, err: %s\n", roomId, err)
+		log.Printf("Room does not exist, roomid: %s, err: %s\n", roomId, err)
 		return
 	}
 	client.RoomId = rid(roomIdi)
@@ -71,8 +73,8 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 func listen(client *Client) {
 	defer cleaner.CleanClient(client)
 	for {
-		msgs := Proto{}
-		err := client.Conn.ReadJSON(&msgs)
+		proto := Proto{}
+		err := client.ReadJSON(&proto)
 		if err != nil {
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 				return
@@ -81,8 +83,12 @@ func listen(client *Client) {
 				return
 			}
 		}
-		fmt.Println(msgs)
-		broadcast <- msgs
+		fmt.Println(proto)
+		msg := &sarama.ProducerMessage{
+			Topic: Topic,
+			Value: sarama.ByteEncoder(proto.JsonEncode()),
+		}
+		producer.Input() <- msg
 	}
 }
 
@@ -131,6 +137,13 @@ func StartServer() {
 		err error
 	)
 	if err = InitConfig(); err != nil {
+		log.Fatal(err)
+	}
+
+	kafkaAddrs := Conf.GetConfig("kafka", "address")
+	kafkaAddr := strings.Split(kafkaAddrs, ",")
+
+	if err = InitKafka(kafkaAddr); err != nil {
 		log.Fatal(err)
 	}
 
