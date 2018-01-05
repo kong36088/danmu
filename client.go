@@ -3,6 +3,7 @@ package danmu
 import (
 	"github.com/gorilla/websocket"
 	"log"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -13,6 +14,7 @@ type (
 
 var (
 	clientBucket *ClientBucket
+	keepalive    int
 )
 
 type Client struct {
@@ -77,6 +79,35 @@ func (client *Client) ErrorReport(err error, msg string) error {
 	return OK
 }
 
+//keepAlive send ping message to client
+// should be called by goroutines
+func (client *Client) keepAlive() {
+	if keepalive <= 0 {
+		return
+	}
+	timeout := time.Duration(keepalive) * time.Second
+
+	lastResponse := time.Now()
+	client.Conn.SetPongHandler(func(msg string) error {
+		lastResponse = time.Now()
+
+		return nil
+	})
+	go func() {
+		for {
+			err := client.WriteControl(websocket.PingMessage, []byte("keepalive"), time.Now().Add(writeWait))
+			if err != nil {
+				return
+			}
+			time.Sleep(timeout / 2)
+			if time.Now().Sub(lastResponse) > timeout {
+				log.Println("Ping pong timeout, close client", client)
+				cleaner.CleanClient(client)
+				return
+			}
+		}
+	}()
+}
 func (client *Client) CloseHandler() func(code int, text string) {
 	return func(code int, text string) {
 		message := []byte{}
@@ -94,9 +125,17 @@ type ClientBucket struct {
 }
 
 func InitClientBucket() error {
+	var (
+		err error
+	)
 	clientBucket = &ClientBucket{
 		Clients: make(map[*websocket.Conn]*Client),
 		lck:     sync.RWMutex{},
+	}
+
+	keepalive, err = strconv.Atoi(Conf.GetConfig("sys", "keepalive_timeout"))
+	if err != nil {
+		return err
 	}
 	return OK
 }

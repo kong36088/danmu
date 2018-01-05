@@ -21,14 +21,13 @@ const (
 //TODO batch push
 var
 (
-	broadcast = make(chan Proto) // broadcast channel
-	upgrader  = websocket.Upgrader{
+	upgrader = websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
 			return true
 		}, // 解决域不一致的问题
-	}                            // 将http升级为websocket
+	} // 将http升级为websocket
 )
 
 func onConnect(w http.ResponseWriter, r *http.Request) {
@@ -60,17 +59,12 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 
 	//send
 	go listen(client)
+	go client.keepAlive()
 
-	kali, err := strconv.Atoi(Conf.GetConfig("sys", "keepalive_timeout"))
-	if err != nil {
-		log.Println(err)
-		return
-	}
-	if kali > 0 {
-		keepAlive(client, time.Duration(kali)*time.Second)
-	}
 }
 
+// listen listen message that receive from client
+// should be called by goroutines
 func listen(client *Client) {
 	defer cleaner.CleanClient(client)
 	for {
@@ -93,30 +87,6 @@ func listen(client *Client) {
 	}
 }
 
-//TODO 整合到client
-func keepAlive(c *Client, timeout time.Duration) {
-	lastResponse := time.Now()
-	c.Conn.SetPongHandler(func(msg string) error {
-		lastResponse = time.Now()
-
-		return nil
-	})
-	go func() {
-		for {
-			err := c.WriteControl(websocket.PingMessage, []byte("keepalive"), time.Now().Add(writeWait))
-			if err != nil {
-				return
-			}
-			time.Sleep(timeout / 2)
-			if time.Now().Sub(lastResponse) > timeout {
-				log.Println("Ping pong timeout, close client", c)
-				cleaner.CleanClient(c)
-				return
-			}
-		}
-	}()
-}
-
 func messagePusher() {
 	var (
 		proto *Proto
@@ -129,8 +99,7 @@ func messagePusher() {
 				//fmt.Printf("%s/%d/%d\t%s\t%s\n", msg.Topic, msg.Partition, msg.Offset, msg.Key, msg.Value)
 				consumer.MarkOffset(msg, "") // mark message as processed
 
-
-				if err := json.Unmarshal(msg.Value, proto);err !=nil{
+				if err := json.Unmarshal(msg.Value, proto); err != nil {
 					log.Println(err)
 					continue
 				}
@@ -150,8 +119,6 @@ func messagePusher() {
 	}
 
 }
-
-//TODO 支持CloseHandler
 
 func StartServer() {
 	var (
