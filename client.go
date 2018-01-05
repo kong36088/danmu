@@ -60,7 +60,7 @@ func (client *Client) WriteControl(messageType int, data []byte, deadline time.T
 	return client.Conn.WriteControl(messageType, data, deadline)
 }
 
-func (client *Client) Write(proto Proto) error {
+func (client *Client) Write(proto *Proto) error {
 	err := client.Conn.WriteJSON(proto)
 	return err
 }

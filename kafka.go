@@ -1,30 +1,38 @@
 package danmu
 
 import (
-	"fmt"
 	"github.com/Shopify/sarama"
-	"github.com/larspensjo/config"
-	"goim/src/github.com/wvanbergen/kafka/consumergroup"
+	"github.com/bsm/sarama-cluster"
 	"log"
-	"os"
 	"strings"
 	"time"
 )
 
 var (
 	Topic    string
+	Topics   []string
 	Group    string
 	producer sarama.AsyncProducer
-	consumer sarama.Consumer
+	consumer *cluster.Consumer
 )
 
 func InitKafka(kafkaAddrs []string) error {
-	err := InitKafkaProducer(kafkaAddrs)
+	var (
+		err error
+	)
+	Topic = Conf.GetConfig("kafka", "topic")
+	Topics = strings.Split(Topic, ",")
+	Group = Conf.GetConfig("kafka", "group")
+
+	err = InitKafkaProducer(kafkaAddrs)
 	if err != nil {
 		return err
 	}
-	Topic = Conf.GetConfig("kafka", "topic")
-	Group = Conf.GetConfig("kafka", "group")
+	err = InitKafkaConsumer(kafkaAddrs)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -71,6 +79,29 @@ func handleProducerError() {
 	}
 }
 
-//
+//consumer
 
+func InitKafkaConsumer(kafkaAddrs []string) error {
+	var (
+		err error
+	)
+	config := cluster.NewConfig()
+	config.Group.Return.Notifications = false
+	config.Consumer.Return.Errors = true
+	config.Consumer.Offsets.CommitInterval = 1 * time.Second
+	config.Consumer.Offsets.Initial = sarama.OffsetNewest //初始从最新的offset开始
 
+	consumer, err = cluster.NewConsumer(kafkaAddrs, Group, Topics, config)
+	if err != nil {
+		return err
+	}
+
+	// consume errors
+	go func() {
+		for err := range consumer.Errors() {
+			log.Printf("Consumer Error: %s\n", err.Error())
+		}
+	}()
+
+	return OK
+}

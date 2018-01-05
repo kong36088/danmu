@@ -1,6 +1,7 @@
 package danmu
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/Shopify/sarama"
 	"github.com/gorilla/websocket"
@@ -16,8 +17,8 @@ const (
 	roomIdFiled = "room"
 )
 
-//TODO kafka
 //TODO log4go
+//TODO batch push
 var
 (
 	broadcast = make(chan Proto) // broadcast channel
@@ -92,6 +93,7 @@ func listen(client *Client) {
 	}
 }
 
+//TODO 整合到client
 func keepAlive(c *Client, timeout time.Duration) {
 	lastResponse := time.Now()
 	c.Conn.SetPongHandler(func(msg string) error {
@@ -116,18 +118,37 @@ func keepAlive(c *Client, timeout time.Duration) {
 }
 
 func messagePusher() {
+	var (
+		proto *Proto
+	)
+	proto = NewProto()
 	for {
-		proto := <-broadcast
-		roomId := proto.RoomId
-		room, err := roomBucket.Get(rid(roomId))
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		for _, client := range room.GetClients() {
-			client.Write(proto)
+		select {
+		case msg, ok := <-consumer.Messages():
+			if ok {
+				//fmt.Printf("%s/%d/%d\t%s\t%s\n", msg.Topic, msg.Partition, msg.Offset, msg.Key, msg.Value)
+				consumer.MarkOffset(msg, "") // mark message as processed
+
+
+				if err := json.Unmarshal(msg.Value, proto);err !=nil{
+					log.Println(err)
+					continue
+				}
+
+				roomId := proto.RoomId
+				room, err := roomBucket.Get(rid(roomId))
+				if err != nil {
+					log.Println(err)
+					continue
+				}
+				for _, client := range room.GetClients() {
+					client.Write(proto)
+				}
+			}
+		default:
 		}
 	}
+
 }
 
 //TODO 支持CloseHandler
@@ -146,6 +167,7 @@ func StartServer() {
 	if err = InitKafka(kafkaAddr); err != nil {
 		log.Fatal(err)
 	}
+	defer consumer.Close()
 
 	if err = InitRoomBucket(); err != nil {
 		log.Fatal(err)

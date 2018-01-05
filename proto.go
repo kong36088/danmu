@@ -16,6 +16,10 @@ type Proto struct {
 	RoomId  rid    `json:"room_id"`
 }
 
+func NewProto() *Proto{
+	return &Proto{}
+}
+
 func (p Proto) String() string {
 	return p.JsonEncode()
 }
