@@ -36,6 +36,11 @@ func InitKafka(kafkaAddrs []string) error {
 	return nil
 }
 
+func CloseKafka(){
+	producer.Close()
+	consumer.Close()
+}
+
 // producer
 
 func InitKafkaProducer(kafkaAddrs []string) error {
@@ -97,11 +102,13 @@ func InitKafkaConsumer(kafkaAddrs []string) error {
 	}
 
 	// consume errors
-	go func() {
-		for err := range consumer.Errors() {
-			log.Printf("Consumer Error: %s\n", err.Error())
-		}
-	}()
+	go handleConsumerError()
 
 	return OK
+}
+
+func handleConsumerError(){
+	for err := range consumer.Errors() {
+		log.Printf("Consumer Error: %s\n", err.Error())
+	}
 }

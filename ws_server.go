@@ -134,7 +134,7 @@ func StartServer() {
 	if err = InitKafka(kafkaAddr); err != nil {
 		log.Fatal(err)
 	}
-	defer consumer.Close()
+	defer CloseKafka()
 
 	if err = InitRoomBucket(); err != nil {
 		log.Fatal(err)
