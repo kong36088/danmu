@@ -2,10 +2,9 @@ package danmu
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/Shopify/sarama"
+	log "github.com/alecthomas/log4go"
 	"github.com/gorilla/websocket"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -33,7 +32,7 @@ var
 func onConnect(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return
 	}
 	client := NewClient(0, conn)
@@ -42,14 +41,14 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		client.WriteErrorMsg("incorrect roomId.")
 		cleaner.CleanClient(client)
-		log.Printf("Parse roomid failed, roomid: %s, err: %s\n", roomId, err)
+		log.Error("Parse roomid failed, roomid: %s, err: %s\n", roomId, err)
 		return
 	}
 	room, err := roomBucket.Get(rid(roomIdi))
 	if err != nil {
 		client.WriteErrorMsg("Room does not exist.")
 		cleaner.CleanClient(client)
-		log.Printf("Room does not exist, roomid: %s, err: %s\n", roomId, err)
+		log.Error("Room does not exist, roomid: %s, err: %s\n", roomId, err)
 		return
 	}
 	client.RoomId = rid(roomIdi)
@@ -74,11 +73,11 @@ func listen(client *Client) {
 			if websocket.IsCloseError(err, websocket.CloseGoingAway, websocket.CloseNoStatusReceived) {
 				return
 			} else {
-				log.Println(err)
+				log.Error(err)
 				return
 			}
 		}
-		fmt.Println(proto)
+		log.Debug(proto)
 		msg := &sarama.ProducerMessage{
 			Topic: Topic,
 			Value: sarama.ByteEncoder(proto.JsonEncode()),
@@ -100,16 +99,17 @@ func messagePusher() {
 				consumer.MarkOffset(msg, "") // mark message as processed
 
 				if err := json.Unmarshal(msg.Value, proto); err != nil {
-					log.Println(err)
+					log.Error(err)
 					continue
 				}
 
 				roomId := proto.RoomId
 				room, err := roomBucket.Get(rid(roomId))
 				if err != nil {
-					log.Println(err)
+					log.Error(err)
 					continue
 				}
+				log.Debug(proto)
 				for _, client := range room.GetClients() {
 					client.Write(proto)
 				}
@@ -125,27 +125,33 @@ func StartServer() {
 		err error
 	)
 	if err = InitConfig(); err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
+
+	if err = InitLog(); err != nil {
+		panic(err)
+	}
+	defer CloseLog()
+	log.Info("danmu server start")
 
 	kafkaAddrs := Conf.GetConfig("kafka", "address")
 	kafkaAddr := strings.Split(kafkaAddrs, ",")
 
 	if err = InitKafka(kafkaAddr); err != nil {
-		log.Fatal(err)
+		log.Exit(err)
 	}
 	defer CloseKafka()
 
 	if err = InitRoomBucket(); err != nil {
-		log.Fatal(err)
+		log.Exit(err)
 	}
 
 	if err = InitClientBucket(); err != nil {
-		log.Fatal(err)
+		log.Exit(err)
 	}
 
 	if err = InitCleaner(); err != nil {
-		log.Fatal(err)
+		log.Exit(err)
 	}
 
 	// http.HandleFunc("/", StaticHandler)
@@ -156,6 +162,6 @@ func StartServer() {
 	addr := ":" + Conf.GetConfig("sys", "port")
 	err = http.ListenAndServe(addr, nil)
 	if err != nil {
-		log.Fatal(err)
+		log.Exit(err)
 	}
 }

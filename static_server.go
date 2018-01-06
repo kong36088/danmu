@@ -2,11 +2,11 @@ package danmu
 
 
 import (
-	"net/http"
-	"fmt"
-	"errors"
 	"bytes"
+	"errors"
+	"fmt"
 	"html/template"
+	"net/http"
 )
 
 

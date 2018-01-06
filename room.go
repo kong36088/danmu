@@ -2,8 +2,8 @@ package danmu
 
 import (
 	"fmt"
+	log "github.com/alecthomas/log4go"
 	"github.com/gorilla/websocket"
-	"log"
 	"strconv"
 	"sync"
 )
@@ -63,7 +63,7 @@ type RoomBucket struct {
 	lck   sync.RWMutex
 }
 
-func InitRoomBucket() error{
+func InitRoomBucket() error {
 	roomBucket = &RoomBucket{
 		Rooms: make(map[rid]*Room, roomMapCup),
 		lck:   sync.RWMutex{},
@@ -72,7 +72,7 @@ func InitRoomBucket() error{
 		r := NewRoom(v)
 		err := roomBucket.Add(r)
 		if err != nil {
-			log.Fatal(err)
+			log.Exit(err)
 		}
 	}
 	return OK

@@ -1,15 +1,17 @@
 package danmu
 
 import (
+	"errors"
 	"flag"
+	"fmt"
+	log "github.com/alecthomas/log4go"
 	"github.com/larspensjo/config"
-	"log"
 	"runtime"
 )
 
 var (
 	Conf       *Config
-	configFile  = flag.String("config", "config/config.ini", "General configuration file")
+	configFile = flag.String("config", "config/config.ini", "General configuration file")
 )
 //TODO 使用goconf？
 
@@ -19,13 +21,13 @@ type Config struct {
 
 //topic list
 
-func NewConfig() *Config{
+func NewConfig() *Config {
 	return &Config{
 		values: make(map[string]map[string]string),
 	}
 }
 
-func InitConfig() error{
+func InitConfig() error {
 	Conf = NewConfig()
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -33,20 +35,20 @@ func InitConfig() error{
 
 	cfgSecs, err := config.ReadDefault(*configFile)
 	if err != nil {
-		log.Fatalf("Fail to find %s %s", *configFile, err)
+		return errors.New(fmt.Sprintf("Fail to find %s %s", *configFile, err))
 	}
 
 	for _, section := range cfgSecs.Sections() {
 		options, err := cfgSecs.SectionOptions(section)
 		if err != nil {
-			log.Printf("Read options of file %s section %s  failed, %s\n", *configFile, section, err)
+			log.Error("Read options of file %s section %s  failed, %s\n", *configFile, section, err)
 			continue
 		}
 		Conf.values[section] = make(map[string]string)
 		for _, v := range options {
 			option, err := cfgSecs.String(section, v)
 			if err != nil {
-				log.Printf("Read file %s option %s failed, %s\n", *configFile, v, err)
+				log.Error("Read file %s option %s failed, %s\n", *configFile, v, err)
 				continue
 			}
 			Conf.values[section][v] = option

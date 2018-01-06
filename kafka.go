@@ -2,8 +2,8 @@ package danmu
 
 import (
 	"github.com/Shopify/sarama"
+	log "github.com/alecthomas/log4go"
 	"github.com/bsm/sarama-cluster"
-	"log"
 	"strings"
 	"time"
 )
@@ -36,7 +36,7 @@ func InitKafka(kafkaAddrs []string) error {
 	return nil
 }
 
-func CloseKafka(){
+func CloseKafka() {
 	producer.Close()
 	consumer.Close()
 }
@@ -67,7 +67,7 @@ func handleProducerSuccess() {
 	for {
 		pm = <-producer.Successes()
 		if pm != nil {
-			log.Printf("producer message success, partition:%d offset:%d key:%v valus:%s", pm.Partition, pm.Offset, pm.Key, pm.Value)
+			log.Info("producer message success, partition:%d offset:%d key:%v valus:%s", pm.Partition, pm.Offset, pm.Key, pm.Value)
 		}
 	}
 }
@@ -79,7 +79,7 @@ func handleProducerError() {
 	for {
 		err = <-producer.Errors()
 		if err != nil {
-			log.Printf("producer message error, partition:%d offset:%d key:%v valus:%s error(%v)", err.Msg.Partition, err.Msg.Offset, err.Msg.Key, err.Msg.Value, err.Err)
+			log.Error("producer message error, partition:%d offset:%d key:%v valus:%s error(%v)", err.Msg.Partition, err.Msg.Offset, err.Msg.Key, err.Msg.Value, err.Err)
 		}
 	}
 }
@@ -107,8 +107,8 @@ func InitKafkaConsumer(kafkaAddrs []string) error {
 	return OK
 }
 
-func handleConsumerError(){
+func handleConsumerError() {
 	for err := range consumer.Errors() {
-		log.Printf("Consumer Error: %s\n", err.Error())
+		log.Error("Consumer Error: %s\n", err.Error())
 	}
 }

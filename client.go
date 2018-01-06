@@ -1,8 +1,8 @@
 package danmu
 
 import (
+	log "github.com/alecthomas/log4go"
 	"github.com/gorilla/websocket"
-	"log"
 	"strconv"
 	"sync"
 	"time"
@@ -72,7 +72,6 @@ func (client *Client) Close() error {
 }
 
 func (client *Client) ErrorReport(err error, msg string) error {
-	log.Println(err)
 	if msg != "" {
 		return client.WriteErrorMsg(msg)
 	}
@@ -101,7 +100,7 @@ func (client *Client) keepAlive() {
 			}
 			time.Sleep(timeout / 2)
 			if time.Now().Sub(lastResponse) > timeout {
-				log.Println("Ping pong timeout, close client", client)
+				log.Info("Ping pong timeout, close client", client)
 				cleaner.CleanClient(client)
 				return
 			}

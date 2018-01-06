@@ -2,7 +2,7 @@ package danmu
 
 import (
 	"encoding/json"
-	"log"
+	log "github.com/alecthomas/log4go"
 )
 
 const (
@@ -27,7 +27,7 @@ func (p Proto) String() string {
 func (p *Proto) JsonEncode() string {
 	j, err := json.Marshal(p)
 	if err != nil {
-		log.Println(err)
+		log.Error(err)
 		return ""
 	}
 	return string(j)
