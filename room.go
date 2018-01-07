@@ -15,13 +15,13 @@ const (
 type (
 	rid int64
 )
-
+//TODO room auto create
 func (r rid) String() string {
 	return strconv.Itoa(int(r))
 }
 
 var (
-	roomList   = []rid{1, 2, 3}
+	roomList   = []rid{1, 2, 3, 4, 5, 6, 7, 8}
 	roomBucket *RoomBucket
 )
 

@@ -16,8 +16,8 @@ const (
 	roomIdFiled = "room"
 )
 
-//TODO log4go
 //TODO batch push
+//TODO 在线人数
 var
 (
 	upgrader = websocket.Upgrader{
