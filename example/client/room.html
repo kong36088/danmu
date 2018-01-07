@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Js原生弹幕</title>
+    <link rel="stylesheet" href="">
+    <style type="text/css" media="screen">
+        * {
+            margin: 0px;
+            padding: 0px
+        }
+
+        html, body {
+            height: 100%
+        }
+
+        body {
+            overflow: hidden;
+            background-color: #FFF;
+            text-align: center;
+        }
+
+        .flex-column {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;, align-items: center;
+        }
+
+        .flex-row {
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .wrap {
+            overflow: hidden;
+            width: 70%;
+            height: 600px;
+            margin: 100px auto;
+            padding: 20px;
+            background-color: transparent;
+            box-shadow: 0 0 9px #222;
+            border-radius: 20px;
+        }
+
+        .wrap .box {
+            position: relative;
+            width: 100%;
+            height: 90%;
+            background-color: #000000;
+            border-radius: 10px
+        }
+
+        .wrap .box span {
+            position: absolute;
+            top: 10px;
+            left: 20px;
+            display: block;
+            padding: 10px;
+            color: #336688
+        }
+
+        .wrap .send {
+            display: flex;
+            width: 100%;
+            height: 10%;
+            background-color: #000000;
+            border-radius: 8px
+        }
+
+        .wrap .send input {
+            width: 40%;
+            height: 60%;
+            border: 0;
+            outline: 0;
+            border-radius: 5px 0px 0px 5px;
+            box-shadow: 0px 0px 5px #d9d9d9;
+            text-indent: 1em
+        }
+
+        .wrap .send .send-btn {
+            width: 100px;
+            height: 60%;
+            background-color: #fe943b;
+            color: #FFF;
+            text-align: center;
+            border-radius: 0px 5px 5px 0px;
+            line-height: 30px;
+            cursor: pointer;
+        }
+
+        .wrap .send .send-btn:hover {
+            background-color: #4cacdc
+        }
+    </style>
+</head>
+<body>
+<div class="wrap flex-column">
+    <div class="box">
+        <video src="static/video/iphonex.mp4" width="100%" height="100%" controls autoplay></video>
+    </div>
+    <div class="send flex-row">
+        <input type="text" class="con" placeholder="弹幕发送[]~(^v^)~*">
+        <div class="send-btn">发送</div>
+    </div>
+</div>
+
+<script src="https://cdn.bootcss.com/jquery/1.12.4/jquery.min.js" type="text/javascript"></script>
+<script>
+
+    window.onload = function () {
+        const ADDR = "ws://localhost:9500/ws";
+        const DELAY = 15000;
+        const RETRY = 10;
+        var conn;
+        var roomId = parseInt(getQueryString("room"),10);
+
+        var ws = {
+            retry: RETRY,
+            init: function () {
+                if (this.retry <= 0) {
+                    return;
+                }
+                if (roomId === "" || !roomId) {
+                    alert("please select your room");
+                    return;
+                }
+
+                conn = new WebSocket(ADDR + "?room=" + roomId);
+                conn.onopen = this.onOpen;
+                conn.onclose = this.onClose;
+                conn.onmessage = this.onMessage;
+
+            },
+            onOpen: function (evt) {
+                this.retry = RETRY;
+            },
+            onMessage: function (evt) {
+                var messages = evt.data.split('\n');
+                for (var i = 0; i < messages.length; i++) {
+                    if (messages[i] !== "") {
+                        var msg = JSON.parse(messages[i]);
+                        switch (msg.op) {
+                            case "message":
+                                createEle(msg.message);   //执行节点创建模块
+                                break;
+                            case "error":
+                                alert(msg.message);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                }
+            },
+            onClose: function (evt) {
+                alert("Connection closed.");
+                setTimeout(function () {
+                    ws.reconnect()
+                }, DELAY);
+
+            },
+            reconnect: function () {
+                this.retry--;
+                console.log(this.retry);
+                this.init();
+            },
+            send: function (txt) {
+                conn.send(JSON.stringify({op: "message", message: txt, room_id: roomId}));
+            }
+
+        };
+        if (window["WebSocket"]) {
+            ws.init();
+        } else {
+            alert('Your browser does not support WebSockets.');
+        }
+
+        function send() {
+            //获取oCon的内容
+            if (oCon.value.length <= 0 || (/^\s+$/).test(oCon.value)) {
+                //alert('请输入弹幕');
+                return false;
+            }
+            message = oCon.value;
+            console.log(message);
+            //生成标签
+            oCon.value = '';   //收尾工作清空输入框
+            ws.send(message);
+        }
+
+        //1.获取元素
+        var oBox = document.querySelector('.box');   //获取.box元素
+        var oCon = document.querySelector('.con');   //获取input框
+        var oBtn = document.querySelector('.send-btn');   //获取发送按钮
+        var cW = oBox.offsetWidth;   //获取box的宽度
+        var cH = oBox.offsetHeight;   //获取box的高度
+        var message = '';   //弹幕内容初始化
+        oBtn.onclick = send;   //点击发送
+        oCon.onkeydown = function (e) {
+            e = e || window.event;
+            if (e.keyCode === 13) {
+                //回车键
+                send();
+            }
+        };
+
+        function createEle(txt) {
+            //动态生成span标签
+            var oMessage = document.createElement('span');   //创建标签
+            oMessage.innerHTML = txt;   //接收参数txt并且生成替换内容
+            oMessage.style.left = cW + 'px';  //初始化生成位置x
+            oBox.appendChild(oMessage);   //把标签塞到oBox里面
+            roll.call(oMessage, {
+                //call改变函数内部this的指向
+                timing: ['linear', 'ease-out'][~~(Math.random() * 2)],
+                color: '#' + (~~(Math.random() * (1 << 24))).toString(16),
+                top: random(0, cH),
+                fontSize: random(16, 32)
+            });
+        }
+
+        function roll(opt) {
+            //弹幕滚动
+            //如果对象中不存在timing 初始化
+            opt.timing = opt.timing || 'linear';
+            opt.color = opt.color || '#fff';
+            opt.top = opt.top || 0;
+            opt.fontSize = opt.fontSize || 16;
+            this._left = parseInt(this.offsetLeft);   //获取当前left的值
+            this.style.color = opt.color;   //初始化颜色
+            this.style.top = opt.top + 'px';
+            this.style.fontSize = opt.fontSize + 'px';
+            this.timer = setInterval(function () {
+                if (this._left <= 100) {
+                    clearInterval(this.timer);   //终止定时器
+                    this.parentNode.removeChild(this);
+                    return;   //终止函数
+                }
+                switch (opt.timing) {
+                    case 'linear':   //如果匀速
+                        this._left += -2;
+                        break;
+                    case 'ease-out':   //
+                        this._left += (0 - this._left) * .01;
+                        break;
+                }
+                this.style.left = this._left + 'px';
+            }.bind(this), 1000 / 60);
+        }
+
+        function random(start, end) {
+            //随机数封装
+            return start + ~~(Math.random() * (end - start));
+        }
+
+        function getQueryString(key) {
+            var reg = new RegExp("(^|&)" + key + "=([^&]*)(&|$)");
+            var result = window.location.search.substr(1).match(reg);
+            return result ? decodeURIComponent(result[2]) : null;
+        }
+    }
+
+
+</script>
+</body>
+</html>
