@@ -25,7 +25,7 @@ go get github.com/kong36088/danmu
 
 为 `kafka` 创建一个topic `danmu`
 ```bash
-kafka-topics.sh --create --topic danmu --zookeeper localhost:2181
+kafka-topics.sh --create --topic danmu --zookeeper localhost:2181 --replication-factor 1 --partitions 1
 ```
 
 本项目为提供了一个使用实例，在完成环境部署后，运行以下命令：

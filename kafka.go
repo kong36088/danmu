@@ -55,9 +55,12 @@ func InitKafkaProducer(kafkaAddrs []string) error {
 	config.Producer.Return.Errors = true
 	config.Producer.Timeout = 5 * time.Second
 	producer, err = sarama.NewAsyncProducer(kafkaAddrs, config)
+	if err != nil{
+		return err
+	}
 	go handleProducerSuccess()
 	go handleProducerError()
-	return err
+	return OK
 }
 
 func handleProducerSuccess() {
