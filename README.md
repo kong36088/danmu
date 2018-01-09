@@ -10,7 +10,7 @@
 
 # Demo
 
-本项目为你提供了一个在线demo：[demo](danmu.jwlchina.cn)
+本项目为你提供了一个在线demo：[demo](http://danmu.jwlchina.cn)
 
 # Getting Start
 
