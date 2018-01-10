@@ -78,11 +78,16 @@ func listen(client *Client) {
 			}
 		}
 		log.Debug(proto)
-		msg := &sarama.ProducerMessage{
-			Topic: Topic,
-			Value: sarama.ByteEncoder(proto.JsonEncode()),
+		switch proto.OP{
+		case OPMsg:
+			msg := &sarama.ProducerMessage{
+				Topic: Topic,
+				Value: sarama.ByteEncoder(proto.JsonEncode()),
+			}
+			producer.Input() <- msg
+		case OPCountQuery:
 		}
-		producer.Input() <- msg
+
 	}
 }
 

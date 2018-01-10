@@ -8,6 +8,7 @@ import (
 const (
 	OPErr = "error"
 	OPMsg = "message"
+	OPCountQuery = "count_query"
 )
 
 type Proto struct {
