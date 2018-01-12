@@ -6,12 +6,14 @@ import (
 	"fmt"
 	log "github.com/alecthomas/log4go"
 	"github.com/larspensjo/config"
+	"os"
 	"runtime"
 )
 
 var (
-	Conf       *Config
-	configFile = flag.String("config", "config/config.ini", "General configuration file")
+	Conf        *Config
+	appPath = os.Getenv("GOPATH") + "/src/github.com/kong36088/danmu/"
+	configFile  = flag.String("config", appPath+"config/config.ini", "General configuration file")
 )
 //TODO 使用goconf？
 
