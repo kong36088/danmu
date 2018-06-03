@@ -12,11 +12,15 @@ type MessageRoomObserver struct{}
 var (
 	commandChans map[*Room]chan string
 	lock         *sync.RWMutex
+	observer     *MessageRoomObserver
 )
 
 func InitMessageHandler() error {
 	commandChans = make(map[*Room]chan string)
 	lock = &sync.RWMutex{}
+	observer = &MessageRoomObserver{}
+
+	roomBucket.AttachObserver(observer)
 	return OK
 }
 

@@ -22,15 +22,9 @@ func (r rid) String() string {
 	return strconv.Itoa(int(r))
 }
 
-type RoomNotify struct {
-	room   *Room
-	action int
-}
-
 var (
 	roomList       = []rid{1, 2, 3, 4, 5, 6, 7, 8}
 	roomBucket     *RoomBucket
-	RoomNotifyChan chan RoomNotify
 )
 
 type Room struct {
