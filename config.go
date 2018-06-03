@@ -15,7 +15,6 @@ var (
 	appPath = os.Getenv("GOPATH") + "/src/github.com/kong36088/danmu/"
 	configFile  = flag.String("config", appPath+"config/config.ini", "General configuration file")
 )
-//TODO 使用goconf？
 
 type Config struct {
 	values map[string]map[string]string

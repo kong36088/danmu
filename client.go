@@ -1,6 +1,7 @@
 package danmu
 
 import (
+	"encoding/json"
 	log "github.com/alecthomas/log4go"
 	"github.com/gorilla/websocket"
 	"strconv"
@@ -64,6 +65,15 @@ func (client *Client) WriteControl(messageType int, data []byte, deadline time.T
 
 func (client *Client) Write(proto *Proto) error {
 	err := client.Conn.WriteJSON(proto)
+	return err
+}
+
+func (client *Client) BatchWrite(proto []*Proto) error {
+	jsonProtos, err := json.Marshal(proto)
+	if err != nil {
+		return err
+	}
+	err = client.Conn.WriteMessage(websocket.TextMessage, jsonProtos)
 	return err
 }
 

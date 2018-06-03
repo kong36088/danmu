@@ -1,7 +1,6 @@
 package danmu
 
 import (
-	"encoding/json"
 	"github.com/Shopify/sarama"
 	log "github.com/alecthomas/log4go"
 	"github.com/gorilla/websocket"
@@ -62,7 +61,7 @@ func onConnect(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// listen listen message that receive from client
+// listen  message that receive from client
 // should be called by goroutines
 func listen(client *Client) {
 	defer cleaner.CleanClient(client)
@@ -84,40 +83,6 @@ func listen(client *Client) {
 		}
 		producer.Input() <- msg
 	}
-}
-
-func messagePusher() {
-	var (
-		proto *Proto
-	)
-	proto = NewProto()
-	for {
-		select {
-		case msg, ok := <-consumer.Messages():
-			if ok {
-				//fmt.Printf("%s/%d/%d\t%s\t%s\n", msg.Topic, msg.Partition, msg.Offset, msg.Key, msg.Value)
-				consumer.MarkOffset(msg, "") // mark message as processed
-
-				if err := json.Unmarshal(msg.Value, proto); err != nil {
-					log.Error(err)
-					continue
-				}
-
-				roomId := proto.RoomId
-				room, err := roomBucket.Get(rid(roomId))
-				if err != nil {
-					log.Error(err)
-					continue
-				}
-				log.Debug(proto)
-				for _, client := range room.GetClients() {
-					client.Write(proto)
-				}
-			}
-		default:
-		}
-	}
-
 }
 
 func StartServer() {
@@ -157,7 +122,10 @@ func StartServer() {
 	// http.HandleFunc("/", StaticHandler)
 	http.HandleFunc("/ws", onConnect)
 
-	go messagePusher()
+	if err = InitMessageHandler(); err != nil {
+		log.Exit(err)
+	}
+	go messageHandler()
 
 	addr := ":" + Conf.GetConfig("sys", "port")
 	err = http.ListenAndServe(addr, nil)

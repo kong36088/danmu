@@ -21,7 +21,7 @@ func (cleaner *Cleaner) CleanClient(client *Client) {
 
 	room, err := roomBucket.Get(client.RoomId)
 	if err == nil {
-		delete(room.Clients, client.Conn)
+		delete(room.clients, client.Conn)
 	}
 
 	clientBucket.Remove(client.Conn)
@@ -30,3 +30,6 @@ func (cleaner *Cleaner) CleanClient(client *Client) {
 }
 
 //TODO CleanRoom
+func (cleaner *Cleaner) CleanRoom(room *Room){
+
+}
