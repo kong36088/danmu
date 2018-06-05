@@ -5,6 +5,7 @@ import (
 	log "github.com/alecthomas/log4go"
 	"sync"
 	"time"
+	"strconv"
 )
 
 type MessageRoomObserver struct{}
@@ -12,11 +13,18 @@ type MessageRoomObserver struct{}
 var (
 	commandChans map[*Room]chan string
 	lock         *sync.RWMutex
+	pushFreq     int
 )
 
 func InitMessageHandler() error {
+	var err error
+
 	commandChans = make(map[*Room]chan string)
 	lock = &sync.RWMutex{}
+	pushFreq, err = strconv.Atoi(Conf.GetConfig("sys", "push_freq"))
+	if err != nil {
+		return err
+	}
 	return OK
 }
 
@@ -70,6 +78,7 @@ func messageHandler() {
 }
 
 func messagePusher(room *Room, commandChan chan string) {
+
 	for {
 		select {
 		case command := <-commandChan:
@@ -87,7 +96,7 @@ func messagePusher(room *Room, commandChan chan string) {
 					client.BatchWrite(protos)
 				}
 			}
-			time.Sleep(time.Duration(1) * time.Second)
+			time.Sleep(time.Duration(pushFreq) * time.Second)
 		}
 	}
 }
