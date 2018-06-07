@@ -124,15 +124,25 @@ func (rb *RoomBucket) Remove(room *Room) error {
 	return OK
 }
 
-func (rb *RoomBucket) AttachObserver(observer *RoomObserverInterface) {
+func (rb *RoomBucket) AttachObserver(observer RoomObserverInterface) {
 	rb.lck.Lock()
 	rb.observers[observer] = observer
+
+	for _, room := range rb.Rooms {
+		observer.Update(RoomActionAdd, room)
+	}
+
 	rb.lck.Unlock()
 }
 
-func (rb *RoomBucket) DetachObserver(observer *RoomObserverInterface) {
+func (rb *RoomBucket) DetachObserver(observer RoomObserverInterface) {
 	rb.lck.Lock()
 	delete(rb.observers, observer)
+
+	for _, room := range rb.Rooms {
+		observer.Update(RoomActionDelete, room)
+	}
+
 	rb.lck.Unlock()
 }
 
