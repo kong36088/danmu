@@ -115,7 +115,7 @@
         const DELAY = 15000;
         const RETRY = 10;
         var conn;
-        var roomId = parseInt(getQueryString("room"),10);
+        var roomId = parseInt(getQueryString("room"), 10);
 
         var ws = {
             retry: RETRY,
@@ -142,15 +142,17 @@
                 for (var i = 0; i < messages.length; i++) {
                     if (messages[i] !== "") {
                         var msg = JSON.parse(messages[i]);
-                        switch (msg.op) {
-                            case "message":
-                                createEle(msg.message);   //执行节点创建模块
-                                break;
-                            case "error":
-                                alert(msg.message);
-                                break;
-                            default:
-                                break;
+                        for (i = 0; i < msg.length; i++) {
+                            switch (msg[i].op) {
+                                case "message":
+                                    createEle(msg[i].message);   //执行节点创建模块
+                                    break;
+                                case "error":
+                                    alert(msg[i].message);
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
                     }
                 }
@@ -185,7 +187,6 @@
                 return false;
             }
             message = oCon.value;
-            console.log(message);
             //生成标签
             oCon.value = '';   //收尾工作清空输入框
             ws.send(message);
