@@ -87,11 +87,12 @@ func messagePusher(room *Room, commandChan chan string) {
 				return
 			}
 		default:
-			protoLen := room.protoList.Len()
+			datas := room.protoList.PopAll()
+			protoLen := len(datas)
 			if protoLen > 0 {
 				protos := make([]*Proto, 0, protoLen)
 				for i := 0; i < protoLen; i++ {
-					proto, err := (room.protoList.Pop()).(*Proto)
+					proto, err := datas[i].(*Proto)
 					if err == false {
 						log.Error("*Proto type assertion failed")
 						continue
