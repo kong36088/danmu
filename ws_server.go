@@ -15,7 +15,6 @@ const (
 	roomIdFiled = "room"
 )
 
-//TODO batch push
 //TODO 在线人数
 var
 (
