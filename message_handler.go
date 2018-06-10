@@ -5,24 +5,34 @@ import (
 	log "github.com/alecthomas/log4go"
 	"sync"
 	"time"
+	"strconv"
 )
-
-type MessageRoomObserver struct{}
 
 var (
 	commandChans map[*Room]chan string
 	lock         *sync.RWMutex
-	observer     *MessageRoomObserver
+	pushFreq     int
+	msgRoomObs   RoomObserverInterface
 )
 
 func InitMessageHandler() error {
+	var err error
+
 	commandChans = make(map[*Room]chan string)
 	lock = &sync.RWMutex{}
-	observer = &MessageRoomObserver{}
 
-	roomBucket.AttachObserver(observer)
+	pushFreq, err = strconv.Atoi(Conf.GetConfig("sys", "push_freq"))
+	msgRoomObs = &MessageRoomObserver{}
+
+	roomBucket.AttachObserver(msgRoomObs)
+
+	if err != nil {
+		return err
+	}
 	return OK
 }
+
+type MessageRoomObserver struct{}
 
 func (mro *MessageRoomObserver) Update(action int, room *Room) {
 	lock.Lock()
@@ -62,11 +72,7 @@ func messageHandler() {
 					continue
 				}
 				room.protoList.PushBack(proto)
-				/*
 				log.Debug(proto)
-				for _, client := range room.GetClients() {
-					client.Write(proto)
-				}*/
 			}
 		default:
 		}
@@ -74,6 +80,7 @@ func messageHandler() {
 }
 
 func messagePusher(room *Room, commandChan chan string) {
+
 	for {
 		select {
 		case command := <-commandChan:
@@ -81,17 +88,23 @@ func messagePusher(room *Room, commandChan chan string) {
 				return
 			}
 		default:
-			if room.protoList.Len() > 0 {
-				protos, err := room.protoList.PopAll().([]*Proto)
-				if err == false {
-					log.Error("[]*Proto type assertion failed")
-					continue
+			datas := room.protoList.PopAll()
+			protoLen := len(datas)
+			if protoLen > 0 {
+				protos := make([]*Proto, 0, protoLen)
+				for i := 0; i < protoLen; i++ {
+					proto, err := datas[i].(*Proto)
+					if err == false {
+						log.Error("*Proto type assertion failed")
+						continue
+					}
+					protos = append(protos, proto)
 				}
 				for _, client := range room.GetClients() {
 					client.BatchWrite(protos)
 				}
 			}
-			time.Sleep(time.Duration(1) * time.Second)
+			time.Sleep(time.Duration(pushFreq) * time.Second)
 		}
 	}
 }

@@ -37,15 +37,22 @@ func (cl *ConcurrentList) Pop() interface{} {
 	return value
 }
 
-func (cl *ConcurrentList) PopAll() interface{} {
-	datas := make([]interface{}, cl.Len())
-	cl.lock.Lock()
+func (cl *ConcurrentList) PopAll() []interface{} {
+	datas := make([]interface{}, 0, cl.Len())
 
-	datas = append(datas, cl.list.Remove(cl.list.Back()))
+	if cap(datas) > 0 {
+		cl.lock.Lock()
 
-	cl.lock.Unlock()
+		for i := 0; i < cap(datas); i++ {
+			datas = append(datas, cl.list.Remove(cl.list.Front()))
+		}
+		cl.lock.Unlock()
 
-	return datas
+		return datas
+	} else {
+		return nil
+	}
+
 }
 
 func (cl *ConcurrentList) Back() *list.Element {
