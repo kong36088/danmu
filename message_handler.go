@@ -22,7 +22,7 @@ func InitMessageHandler() error {
 	lock = &sync.RWMutex{}
 
 	pushFreq, err = strconv.Atoi(Conf.GetConfig("sys", "push_freq"))
-	msgRoomObs = &MessageRoomObserver{}
+	msgRoomObs = new(MessageRoomObserver)
 
 	roomBucket.AttachObserver(msgRoomObs)
 
