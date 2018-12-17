@@ -85,7 +85,7 @@ func messagePusher(room *Room, commandChan chan string) {
 			if command == "stop" {
 				return
 			}
-		case <-time.Tick(1 * time.Second): // 定时器，写死1秒定时触发弹幕推送逻辑
+		case <-time.Tick(time.Duration(pushFreq) * time.Second): // 定时器，写死1秒定时触发弹幕推送逻辑
 			datas := room.protoList.PopAll()
 			protoLen := len(datas)
 			if protoLen > 0 {
@@ -102,7 +102,6 @@ func messagePusher(room *Room, commandChan chan string) {
 					client.BatchWrite(protos)
 				}
 			}
-			time.Sleep(time.Duration(pushFreq) * time.Second)
 		}
 	}
 }
