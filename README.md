@@ -32,7 +32,11 @@ kafka-topics.sh --create --topic danmu --zookeeper localhost:2181 --replication-
 ```bash
 $ cd /path/to/your/application
 
-$ go run example/serv/main.go
+$ cd example/serv/
+
+$ go build   # or go run main.go
+
+$ ./serv    # run your application
 ```
 
 服务开启之后，用浏览器访问打开html文件 `example/client/room_list.html` 即可看到服务效果

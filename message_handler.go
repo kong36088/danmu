@@ -3,9 +3,9 @@ package danmu
 import (
 	"encoding/json"
 	log "github.com/alecthomas/log4go"
+	"strconv"
 	"sync"
 	"time"
-	"strconv"
 )
 
 var (
@@ -74,20 +74,18 @@ func messageHandler() {
 				room.protoList.PushBack(proto)
 				log.Debug(proto)
 			}
-		default:
 		}
 	}
 }
 
 func messagePusher(room *Room, commandChan chan string) {
-
 	for {
 		select {
 		case command := <-commandChan:
 			if command == "stop" {
 				return
 			}
-		default:
+		case <-time.Tick(1 * time.Second): // 定时器，写死1秒定时触发弹幕推送逻辑
 			datas := room.protoList.PopAll()
 			protoLen := len(datas)
 			if protoLen > 0 {
