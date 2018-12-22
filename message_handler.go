@@ -79,13 +79,14 @@ func messageHandler() {
 }
 
 func messagePusher(room *Room, commandChan chan string) {
+	ticker := time.NewTicker(time.Duration(pushFreq) * time.Second) // 推送定时器
 	for {
 		select {
 		case command := <-commandChan:
 			if command == "stop" {
 				return
 			}
-		case <-time.Tick(time.Duration(pushFreq) * time.Second): // 定时器，写死1秒定时触发弹幕推送逻辑
+		case <- ticker.C:
 			datas := room.protoList.PopAll()
 			protoLen := len(datas)
 			if protoLen > 0 {
